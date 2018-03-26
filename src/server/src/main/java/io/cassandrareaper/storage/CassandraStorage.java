@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ConsistencyLevel;
+import com.datastax.driver.core.Host;
 import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.QueryLogger;
@@ -57,6 +58,7 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.VersionNumber;
 import com.datastax.driver.core.WriteType;
 import com.datastax.driver.core.exceptions.DriverException;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
@@ -158,6 +160,14 @@ public final class CassandraStorage implements IStorage, IDistributedStorage {
       Session session,
       String keyspace) {
 
+    // is this Cassandra-2.0?
+    boolean isPostTwoZero = true;
+    for (Host host : cassandra.getMetadata().getAllHosts()) {
+      isPostTwoZero &= 0 > VersionNumber.parse("2.1").compareTo(host.getCassandraVersion());
+    }
+    if (!isPostTwoZero) {
+      LOG.warn("Running legacy schema for Cassadnra-2.0");
+    }
     // initialize/upgrade db schema
     Database database = new Database(cassandra, keyspace);
     if (database.getVersion() > 3 && database.getVersion() < 9) {
@@ -165,7 +175,9 @@ public final class CassandraStorage implements IStorage, IDistributedStorage {
       // Migration009 needs to happen before `migration.migrate()` in case it fails and needs re-trying
       Migration009.migrate(session);
     }
-    MigrationTask migration = new MigrationTask(database, new MigrationRepository("db/cassandra"));
+    MigrationRepository repo = new MigrationRepository(isPostTwoZero ? "db/cassandra" : "db/cassandra-2_0");
+    MigrationTask migration = new MigrationTask(database, repo);
+
     migration.migrate();
     Migration003.migrate(session);
   }
