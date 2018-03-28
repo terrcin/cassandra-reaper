@@ -60,6 +60,7 @@ ADD entrypoint.sh /usr/local/bin/entrypoint.sh
 ADD configure-persistence.sh /usr/local/bin/configure-persistence.sh
 ADD configure-metrics.sh /usr/local/bin/configure-metrics.sh
 ADD configure-webui-authentication.sh /usr/local/bin/configure-webui-authentication.sh
+ADD entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN addgroup -S reaper && \
     adduser -S reaper reaper && \
@@ -84,6 +85,7 @@ VOLUME /var/lib/cassandra-reaper
 VOLUME /etc/cassandra-reaper/shiro
 
 ADD ${SHADED_JAR} /usr/local/lib/cassandra-reaper.jar
+ADD spreaper /usr/local/bin/spreaper
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["cassandra-reaper"]
